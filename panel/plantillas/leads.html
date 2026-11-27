@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% import "_comun.html" as c with context %}
+{% block titulo %}Leads{% endblock %}
+{% block contenido %}
+<style>
+  .tabla-leads .col-usuario a, .tabla-leads .enlace-video { white-space: nowrap; }
+  .form-hablado { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .form-hablado input { flex: 1 1 11em; min-width: 0; }
+  .tabla-leads .col-accion form + form { margin-top: 8px; }
+</style>
+<div class="encabezado">
+  <div>
+    <h1>Leads</h1>
+    <p>Las personas que dejaron su número por mensaje privado.</p>
+    <details class="mas-info"><summary>{{ c.icono('info') }}<span>¿Cómo funciona?</span></summary>
+      <p>El bot ya les contestó que tu equipo les escribe por WhatsApp{% if webhook %} y las mandó a tu sistema de ventas{% endif %}; también te llega un correo por cada una. Cuando alguien del equipo hable con la persona, márcalo aquí: el bot le escribirá «¿cómo te fue?».</p>
+    </details>
+  </div>
+  <a class="boton boton-secundario" href="/leads.csv{% if filtro %}?filtro={{ filtro }}{% endif %}">{{ c.icono('descargar') }}<span>Descargar para Excel</span></a>
+</div>
+
+{% if request.query_params.get('hecho') == 'hablado' %}
+<div class="aviso aviso-verde" role="status">{{ c.icono('check') }}<div><h2>Marcado</h2><p>El bot le escribirá el seguimiento «¿cómo te fue?» a su hora.</p></div></div>
+{% endif %}
+
+<section class="tarjeta embudo-tarjeta" aria-labelledby="t-etapas">
+  <h2 id="t-etapas">Todas las personas que comentaron, por etapa</h2>
+  <ol class="embudo" role="list">
+    {% for letra, nombre in NOMBRES_ETAPA.items() %}
+    <li class="embudo-paso tono-{{ {'A': 'gris', 'B': 'azul', 'C': 'verde', 'D': 'verde'}[letra] }}">
+      <span class="embudo-num" aria-hidden="true">{{ loop.index }}</span>
+      <strong>{{ etapas.get(letra, 0) }}</strong><span>{{ nombre }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+{% if personas %}
+<section class="tarjeta" aria-labelledby="t-personas">
+  <h2 id="t-personas">{{ c.icono('alerta') }} Esperan que alguien del equipo les conteste</h2>
+  <p class="tenue">El bot ya no les contesta: preguntaron algo que solo puede responder una persona (precios, quejas, dudas del programa) o siguieron escribiendo sin dejar su número. Escríbeles tú desde la app de TikTok, en Mensajes.</p>
+</section>
+<div class="tarjeta tarjeta-tabla">
+  <table role="table" class="tabla-leads">
+    <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Persona</th><th role="columnheader" scope="col">Por qué</th><th role="columnheader" scope="col"><span class="solo-lector">Acción</span></th></tr></thead>
+    <tbody role="rowgroup">
+    {% for k in personas %}
+    <tr role="row">
+      <td role="cell" class="col-usuario" data-titulo="Persona"><a href="https://www.tiktok.com/@{{ k.usuario }}" target="_blank" rel="noopener">@{{ k.usuario }}</a>{% if k.nombre %}<br><span class="tenue pequena">{{ k.nombre }}</span>{% endif %}</td>
+      <td role="cell" class="col-ancha" data-titulo="Por qué">{{ k.humano_motivo or '—' }}<br><span class="tenue pequena">{{ k.ultimo_mensaje | local }}</span></td>
+      <td role="cell" class="col-accion">
+        <form method="post" action="/leads/persona/{{ k.user_id }}/atendida"><button class="secundario" data-ocupado="Guardando…">{{ c.icono('check') }}<span>Ya le contesté</span></button></form>
+        <form method="post" action="/leads/persona/{{ k.user_id }}/devolver"><button class="secundario" data-ocupado="Guardando…" title="El bot vuelve a contestarle solo">{{ c.icono('play') }}<span>Que la atienda el bot</span></button></form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<nav class="filtros" aria-label="Filtrar leads">
+  <a href="/leads" class="filtro-pildora" {% if not filtro %}aria-current="true"{% endif %}>Todos <span class="tenue">{{ cuentas.todos }}</span></a>
+  <a href="/leads?filtro=sin_hablar" class="filtro-pildora tono-ambar" {% if filtro == 'sin_hablar' %}aria-current="true"{% endif %}><span class="punto" aria-hidden="true"></span>Falta hablar con ellos <span class="tenue">{{ cuentas.sin_hablar }}</span></a>
+  <a href="/leads?filtro=hablados" class="filtro-pildora tono-verde" {% if filtro == 'hablados' %}aria-current="true"{% endif %}><span class="punto" aria-hidden="true"></span>Ya hablamos <span class="tenue">{{ cuentas.hablados }}</span></a>
+</nav>
+
+<div class="tarjeta tarjeta-tabla">
+  {% if filas %}
+  <table role="table" class="tabla-leads">
+    <thead role="rowgroup">
+      <tr role="row"><th role="columnheader" scope="col">Cuándo</th><th role="columnheader" scope="col">Persona</th><th role="columnheader" scope="col">Número</th><th role="columnheader" scope="col">De qué video</th><th role="columnheader" scope="col">Equipo</th></tr>
+    </thead>
+    <tbody role="rowgroup">
+    {% for l in filas %}
+    <tr role="row">
+      <td role="cell" class="col-fecha" data-titulo="Cuándo">{{ l.creado_en | local }}</td>
+      <td role="cell" class="col-usuario" data-titulo="Persona"><a href="https://www.tiktok.com/@{{ l.usuario }}" target="_blank" rel="noopener">@{{ l.usuario }}</a>{% if l.nombre %}<br><span class="tenue pequena">{{ l.nombre }}</span>{% endif %}</td>
+      <td role="cell" data-titulo="Número"><strong>{{ legible(l.telefono) }}</strong><br>
+        <a class="pequena" href="https://wa.me/{{ l.telefono | replace('+', '') }}" target="_blank" rel="noopener">{{ c.icono('externo') }} Abrir en WhatsApp</a></td>
+      <td role="cell" data-titulo="De qué video">{% if l.video_url %}<a class="enlace-video" href="{{ l.video_url }}" target="_blank" rel="noopener">Reel …{{ l.reel_id[-6:] }}</a>{% else %}<span class="tenue">Escribió por mensaje</span>{% endif %}
+        {% if l.palabra_clave %}<br><span class="etiqueta sin-punto">{{ l.palabra_clave }}</span>{% endif %}</td>
+      <td role="cell" class="col-accion" data-titulo="Equipo">
+        {% if l.hablado_en %}
+        <span class="etiqueta tono-verde">Ya hablamos{% if l.vendedor %} · {{ l.vendedor }}{% endif %}</span>
+        {% else %}
+        <form method="post" action="/leads/{{ l.id }}/hablado" class="form-hablado">
+          <label class="solo-lector" for="vendedor-{{ l.id }}">Quién habló con la persona (opcional)</label>
+          <input id="vendedor-{{ l.id }}" name="vendedor" placeholder="Quién habló (opcional)" maxlength="60" autocomplete="off">
+          <button class="secundario" data-ocupado="Guardando…">{{ c.icono('check') }}<span>Ya hablé con la persona</span></button>
+        </form>
+        {% endif %}
+        {% if not l.correo_en %}<p class="texto-error pequena">{{ c.icono('alerta') }}<span>El correo de este lead aún no salió (se reintenta solo).</span></p>{% endif %}
+        {% if webhook and not l.webhook_en %}<p class="texto-error pequena">{{ c.icono('alerta') }}<span>Aún no llegó a tu sistema de ventas (se reintenta solo).</span></p>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="vacio">
+    <p><strong>{% if filtro %}Ningún lead con este filtro.{% else %}Todavía nadie ha dejado su número.{% endif %}</strong></p>
+    <p>{% set comentaron = etapas.values() | sum %}{% if not filtro and comentaron %}{{ comentaron }} {{ 'persona ha comentado' if comentaron == 1 else 'personas han comentado' }}; en cuanto una deje su número por mensaje privado, aparecerá aquí.{% else %}Aparecerán aquí en cuanto alguien deje su número por mensaje privado.{% endif %}</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

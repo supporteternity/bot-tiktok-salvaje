@@ -1,0 +1,23 @@
+# Secretos y configuración local (viven en la carpeta de datos, pero por si acaso)
+.env
+config.toml
+
+# Datos del bot (nunca dentro del código)
+datos/
+perfil/
+capturas/
+!docs/capturas/
+logs/
+*.db
+*.db-wal
+*.db-shm
+
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Sistema
+.DS_Store
+Thumbs.db

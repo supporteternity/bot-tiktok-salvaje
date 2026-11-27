@@ -1,0 +1,61 @@
+{% import "_comun.html" as c with context %}
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% if crear %}Bienvenida{% else %}Entrar{% endif %} · SALVAJE</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/estaticos/marca/icono-32.png?v={{ version_estaticos }}">
+  <link rel="apple-touch-icon" href="/estaticos/marca/icono-180.png?v={{ version_estaticos }}">
+  <link rel="preload" href="/estaticos/fuentes/montserrat.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/estaticos/estilo.css?v={{ version_estaticos }}">
+  <script src="/estaticos/panel.js?v={{ version_estaticos }}" defer></script>
+</head>
+<body class="pagina-entrar">
+  {{ c.sprite() }}
+  <main class="entrar">
+    <div class="entrar-marca">
+      <img class="entrar-logo" src="/estaticos/marca/salvaje-logo.png?v={{ version_estaticos }}" alt="SALVAJE" width="447" height="513">
+      <span class="entrar-sub">Panel del bot</span>
+    </div>
+    <section class="tarjeta entrar-tarjeta" aria-labelledby="t-entrar">
+      {% if crear %}
+      <h1 id="t-entrar">Bienvenido al panel del bot</h1>
+      <p class="tenue">Primero, crea una contraseña para entrar a este panel. Apúntala en un lugar seguro.</p>
+      {% if error %}<p class="aviso aviso-rojo entrar-error" role="alert">{{ c.icono('alerta') }}<span>{{ error }}</span></p>{% endif %}
+      <form method="post" action="/entrar/crear">
+        <div class="campo">
+          <label for="nueva">Contraseña nueva</label>
+          <div class="con-boton">
+            <input id="nueva" type="password" name="nueva" minlength="6" autocomplete="new-password" autofocus required aria-describedby="ayuda-nueva">
+            <button type="button" class="secundario" data-ver-clave="nueva" aria-pressed="false">{{ c.icono('ojo') }}<span>Mostrar</span></button>
+          </div>
+          <p class="ayuda" id="ayuda-nueva">Mínimo 6 caracteres.</p>
+        </div>
+        <div class="campo">
+          <label for="repetida">Repite la contraseña</label>
+          <input id="repetida" type="password" name="repetida" minlength="6" autocomplete="new-password" required data-repite="nueva" aria-describedby="coinciden">
+          <p class="coinciden" id="coinciden" data-coinciden aria-live="polite" hidden></p>
+        </div>
+        <button class="boton-grande entrar-boton" data-ocupado="Creando…">{{ c.icono('candado') }}<span>Crear contraseña y entrar</span></button>
+      </form>
+      {% else %}
+      <h1 id="t-entrar">Entrar</h1>
+      <p class="tenue">Escribe la contraseña del panel para entrar.</p>
+      {% if error %}<p class="aviso aviso-rojo entrar-error" role="alert">{{ c.icono('alerta') }}<span>{{ error }}</span></p>{% endif %}
+      <form method="post" action="/entrar">
+        <div class="campo">
+          <label for="contrasena">Contraseña</label>
+          <div class="con-boton">
+            <input id="contrasena" type="password" name="contrasena" autocomplete="current-password" autofocus required>
+            <button type="button" class="secundario" data-ver-clave="contrasena" aria-pressed="false">{{ c.icono('ojo') }}<span>Mostrar</span></button>
+          </div>
+        </div>
+        <button class="boton-grande entrar-boton" data-ocupado="Entrando…">{{ c.icono('candado') }}<span>Entrar</span></button>
+      </form>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

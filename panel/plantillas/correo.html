@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% import "_comun.html" as c with context %}
+{% block titulo %}Correo de alertas{% endblock %}
+{% block contenido %}
+<div class="estrecho-ajustes">
+<div class="encabezado">
+  <div>
+    <h1>Correo de alertas</h1>
+    <p>Desde qué correo te avisa el bot y a quién.</p>
+    <details class="mas-info"><summary>{{ c.icono('info') }}<span>¿Cómo funciona?</span></summary>
+      <p>El bot te escribe por correo cuando necesita a una persona (por ejemplo, si TikTok pide una verificación) y te manda un resumen cada mañana.</p>
+    </details>
+  </div>
+</div>
+
+{% if listo %}
+<div class="aviso aviso-verde" role="status">
+  {{ c.icono('check') }}
+  <div>
+    <h2>✓ ¡Listo! El correo funciona</h2>
+    <p>Enviamos un correo de prueba a <strong>{{ listo }}</strong>. Si en un minuto no lo ves, revisa la carpeta de <strong>Spam</strong> y márcalo como «No es spam».</p>
+  </div>
+</div>
+{% endif %}
+{% if error %}
+<div class="aviso aviso-rojo" role="alert">{{ c.icono('alerta') }}<div><h2>No funcionó</h2><p>{{ error }}</p></div></div>
+{% endif %}
+
+{% if f.configurado %}
+<section class="tarjeta ficha-correo" aria-labelledby="t-ficha">
+  <h2 id="t-ficha">{{ c.icono('check') }}<span>El correo de alertas está configurado</span></h2>
+  <dl class="ficha-datos">
+    <div><dt>Envía desde</dt><dd>{{ f.correo }}</dd></div>
+    <div><dt>Avisa a</dt><dd>{{ (f.avisar_a or f.correo) | replace('\n', ', ') }}</dd></div>
+  </dl>
+  <div class="acciones">
+    <form method="post" action="/correo/probar"><button class="boton-grande" data-ocupado="Enviando…">{{ c.icono('enviar') }}<span>Enviar correo de prueba</span></button></form>
+    <a class="boton boton-secundario" href="#form-correo" data-abrir-cambiar>{{ c.icono('ajustes') }}<span>Cambiar</span></a>
+  </div>
+</section>
+{% endif %}
+
+<form method="post" action="/correo" class="ajustes{% if f.configurado and not error and not cambiar %} plegado{% endif %}" id="form-correo">
+  <section class="tarjeta paso" aria-labelledby="t-paso1">
+    <h2 id="t-paso1"><span class="paso-numero" aria-hidden="true">1</span>¿Qué correo usa el bot para enviar los avisos?</h2>
+
+    <fieldset class="campo">
+      <legend class="solo-lector">Proveedor de correo</legend>
+      <div class="segmentos">
+        <label class="segmento"><input type="radio" name="proveedor" value="gmail" {% if f.proveedor == 'gmail' %}checked{% endif %}>{{ c.icono('correo') }}<span>Gmail</span></label>
+        <label class="segmento"><input type="radio" name="proveedor" value="otro" {% if f.proveedor == 'otro' %}checked{% endif %}>{{ c.icono('ajustes') }}<span>Otro correo</span></label>
+      </div>
+    </fieldset>
+
+    <div class="solo-gmail">
+      <ol class="pasos pasos-google">
+        <li><strong>Ten un Gmail para el bot.</strong> Mejor uno nuevo solo para esto. Si ya lo tienes, salta este paso.
+          <a class="boton boton-secundario boton-paso" href="https://accounts.google.com/signup" target="_blank" rel="noopener">{{ c.icono('externo') }}<span>Crear un Gmail</span></a></li>
+        <li><strong>Activa la «Verificación en 2 pasos»</strong> en ese Gmail (Google lo pide para el paso 3).
+          <a class="boton boton-secundario boton-paso" href="https://myaccount.google.com/signinoptions/twosv" target="_blank" rel="noopener">{{ c.icono('externo') }}<span>Activar verificación</span></a></li>
+        <li><strong>Crea una «contraseña de aplicación»:</strong> en «Nombre de la app» escribe <strong>Bot TikTok</strong>, pulsa <strong>Crear</strong> y copia las 16 letras.
+          <a class="boton boton-secundario boton-paso" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">{{ c.icono('externo') }}<span>Crear la contraseña</span></a></li>
+      </ol>
+    </div>
+
+    <div class="campo">
+      <label for="correo">Correo del bot</label>
+      <input id="correo" type="email" name="correo" value="{{ f.correo }}" placeholder="alertas.academia@gmail.com" autocomplete="off" required>
+    </div>
+
+    <div class="solo-gmail">
+      <div class="campo">
+        <label for="clave">Pega aquí las 16 letras (los espacios no importan)</label>
+        <div class="con-boton">
+          <input type="password" name="clave" id="clave" autocomplete="new-password" {% if f.proveedor == 'otro' %}disabled{% endif %}
+                 placeholder="{% if f.clave_guardada %}Guardada ✓ (vacío = no cambiarla; si cambias el correo, escríbela){% else %}abcd efgh ijkl mnop{% endif %}">
+          <button type="button" class="secundario" data-ver-clave="clave" aria-pressed="false">{{ c.icono('ojo') }}<span>Mostrar</span></button>
+        </div>
+      </div>
+      <p class="ayuda guia-nota">{{ c.icono('candado') }}<span>No es la contraseña con la que entras a Gmail: es una clave solo para el bot y se queda en esta computadora. Si algún día quieres quitarle el acceso, la borras en esa misma página de Google.</span></p>
+    </div>
+
+    <div class="solo-otro">
+      <div class="campo">
+        <label for="clave-otro">Contraseña del correo</label>
+        <div class="con-boton">
+          <input type="password" name="clave" id="clave-otro" autocomplete="new-password" {% if f.proveedor != 'otro' %}disabled{% endif %}
+                 placeholder="{% if f.clave_guardada %}Guardada ✓ (vacío = no cambiarla; si cambias el correo, escríbela){% endif %}">
+          <button type="button" class="secundario" data-ver-clave="clave-otro" aria-pressed="false">{{ c.icono('ojo') }}<span>Mostrar</span></button>
+        </div>
+      </div>
+      <p class="ayuda">Estos dos datos te los da tu proveedor de correo (busca «SMTP» en su ayuda).</p>
+      <div class="dos-campos">
+        <div class="campo">
+          <label for="servidor">Servidor de correo saliente (SMTP)</label>
+          <input id="servidor" type="text" name="servidor" value="{{ f.servidor }}" placeholder="smtp.tuempresa.com">
+        </div>
+        <div class="campo">
+          <label for="puerto">Puerto</label>
+          <input id="puerto" type="text" name="puerto" value="{{ f.puerto }}" inputmode="numeric" placeholder="587">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tarjeta paso" aria-labelledby="t-paso2">
+    <h2 id="t-paso2"><span class="paso-numero" aria-hidden="true">2</span>¿A quién avisamos?</h2>
+    <div class="campo">
+      <label for="avisar">Correos que reciben los avisos y el resumen diario</label>
+      <textarea id="avisar" name="avisar_a" rows="3" placeholder="dueno@academia.com&#10;setter@academia.com">{{ f.avisar_a }}</textarea>
+      <p class="ayuda">Uno por línea. Pon el tuyo y el de quien te da soporte, así os enteráis los dos. Si lo dejas vacío, se avisa al mismo correo del bot.</p>
+    </div>
+  </section>
+
+  <div class="barra-final">
+    <button class="boton-grande" data-ocupado="Enviando correo de prueba…">{{ c.icono('enviar') }}<span>Guardar y enviar correo de prueba</span></button>
+    <p class="ayuda">Antes de guardar, el panel envía un correo de prueba. Si no se puede enviar, no se guarda nada y te dice por qué.</p>
+  </div>
+</form>
+</div>
+
+<script>
+  const form = document.getElementById('form-correo');
+  function cambiar() {
+    const gmail = form.proveedor.value === 'gmail';
+    form.querySelectorAll('.solo-gmail').forEach(e => e.hidden = !gmail);
+    form.querySelectorAll('.solo-otro').forEach(e => e.hidden = gmail);
+    document.getElementById('clave').disabled = !gmail;
+    document.getElementById('clave-otro').disabled = gmail;
+  }
+  form.querySelectorAll('input[name=proveedor]').forEach(r => r.addEventListener('change', cambiar));
+  form.correo.addEventListener('blur', () => {
+    if (/@(gmail|googlemail)\.com$/i.test(form.correo.value)) { form.proveedor.value = 'gmail'; cambiar(); }
+  });
+  cambiar();
+  const abrir = document.querySelector('[data-abrir-cambiar]');
+  if (abrir) abrir.addEventListener('click', e => { e.preventDefault(); form.classList.remove('plegado'); const primero = form.correo; primero.scrollIntoView({block: 'center'}); primero.focus(); });
+</script>
+{% endblock %}

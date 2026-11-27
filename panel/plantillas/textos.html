@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% import "_comun.html" as c with context %}
+{% block titulo %}Textos{% endblock %}
+{% block contenido %}
+{%- set INFO = {
+  'dm':            ('enviar',  'verde', 'Lo que recibe cada persona que comenta. Debe llevar {landing}.'),
+  'respuesta':     ('publico', 'azul',  'Respuesta en el comentario (solo con «A todos» en Ajustes).'),
+  'respuesta_alt': ('cerrado', 'ambar', 'Respuesta en el comentario si tiene los mensajes cerrados.'),
+  'fijado':        ('fijar',   'gris',  'Comentario para fijar en tus reels. Lo publicas y fijas tú desde la app; aquí lo guardas para copiarlo.'),
+  'recordatorio':  ('publico', 'azul',  'Respuesta en el comentario si la persona ya recibió la info y vuelve a comentar (como mucho una al día).'),
+  'ya_en_contacto': ('publico', 'azul', 'Respuesta en el comentario si la persona ya dejó su número y vuelve a comentar.'),
+  'confirmar_numero': ('leads', 'verde', 'Mensaje privado en cuanto la persona deja su número. Después la atiende tu equipo.'),
+  'pedir_numero':  ('enviar',  'verde', 'Mensaje privado si la persona pregunta o duda antes de dar su número.'),
+  'animo':         ('enviar',  'verde', 'Mensaje privado si la persona se muestra interesada («me interesa», «quiero»…).'),
+  'seguimiento':   ('enviar',  'verde', 'Mensaje privado cuando tu equipo marca en Leads «Ya hablé con la persona». {vendedor} = quien habló con ella.'),
+  'bienvenida':    ('enviar',  'verde', 'Mensaje privado a cada seguidor nuevo. {youtube} = el enlace de YouTube de Ajustes.'),
+} -%}
+<div class="encabezado">
+  <div>
+    <h1>Textos</h1>
+    <p>El bot elige al azar una de las versiones activas. Usa <code>{nombre}</code> para el nombre de la persona y <code>{landing}</code> para el enlace de tu página (se pone en <a href="/ajustes#landing">Ajustes</a>). Los textos públicos nunca pueden llevar un número de teléfono.</p>
+  </div>
+</div>
+
+{% if error == 'numero' %}
+<div class="aviso aviso-rojo" role="alert">{{ c.icono('alerta') }}<div><h2>No se ha guardado</h2><p>Ese texto se publica en los comentarios y parece llevar un número de teléfono. Los números van siempre por mensaje privado.</p></div></div>
+{% endif %}
+
+<nav class="saltos" aria-label="Tipos de texto">
+  {% for tipo, g in grupos.items() %}
+  <a href="#grupo-{{ tipo }}" class="salto tono-{{ 'rojo' if not g.activos else INFO[tipo][1] }}">
+    {{ c.icono(INFO[tipo][0]) }}<span>{{ g.titulo }}</span><span class="salto-cuenta">{{ g.activos }}</span>
+  </a>
+  {% endfor %}
+</nav>
+
+{% for tipo, g in grupos.items() %}
+{%- set icono, tono, descripcion = INFO[tipo] -%}
+<section class="tarjeta grupo tono-{{ tono }}" id="grupo-{{ tipo }}" aria-labelledby="t-{{ tipo }}">
+  <header class="grupo-cabeza">
+    <span class="grupo-icono" aria-hidden="true">{{ c.icono(icono) }}</span>
+    <div>
+      <h2 id="t-{{ tipo }}">{{ g.titulo }}</h2>
+      <p class="tenue">{{ descripcion }}</p>
+    </div>
+    <span class="etiqueta {{ 'tono-verde' if g.activos else ('tono-rojo' if g.necesario else '') }}">{{ g.activos }} {{ 'activa' if g.activos == 1 else 'activas' }}</span>
+  </header>
+
+  {% if not g.activos and g.necesario %}
+  <p class="aviso aviso-rojo grupo-aviso">{{ c.icono('alerta') }}<span>No hay ninguna variante activa: el bot no podrá usar este tipo de texto.</span></p>
+  {% elif not g.activos and tipo == 'fijado' %}
+  <p class="aviso grupo-aviso">{{ c.icono('info') }}<span>Opcional. Escríbelo aquí para tenerlo a mano y copiarlo cuando lo fijes en cada reel.</span></p>
+  {% elif not g.activos and tipo in ('dm', 'respuesta', 'respuesta_alt') %}
+  <p class="aviso grupo-aviso">{{ c.icono('info') }}<span>No hace falta con la forma de responder elegida en <a href="/ajustes">Ajustes</a>.</span></p>
+  {% elif not g.activos %}
+  <p class="aviso aviso-ambar grupo-aviso">{{ c.icono('info') }}<span>Sin ninguna versión activa: el bot no mandará este mensaje.</span></p>
+  {% endif %}
+  {% if g.activos and g.activos < 3 and tipo in ('dm', 'respuesta', 'respuesta_alt') %}
+  <p class="aviso aviso-ambar grupo-aviso">{{ c.icono('info') }}<span>Recomendado: 3 o más versiones activas. Enviar siempre el mismo texto es lo que TikTok detecta antes como spam; el bot va alternando entre ellas.</span></p>
+  {% endif %}
+
+  <div class="variantes">
+  {% for f in g.filas %}
+  <form method="post" action="/textos/{{ f.t.id }}" class="variante {% if not f.t.activo %}apagada{% endif %}" data-texto data-vigilar>
+    <div class="variante-cabeza">
+      <h3>Variante {{ loop.index }}</h3>
+      <span class="tenue pequena">Usada {{ f.t.veces_usado }} {{ 'vez' if f.t.veces_usado == 1 else 'veces' }}</span>
+    </div>
+    <label class="solo-lector" for="texto-{{ f.t.id }}">Texto de la variante {{ loop.index }}</label>
+    <textarea id="texto-{{ f.t.id }}" name="contenido" rows="3" required aria-describedby="ayuda-{{ f.t.id }}">{{ f.t.contenido }}</textarea>
+    <div class="herramientas solo-js">
+      <span class="tenue pequena">Insertar:</span>
+      <button type="button" class="chip" data-insertar="{nombre}">{nombre}</button>
+      <button type="button" class="chip" data-insertar="{landing}">{landing}</button>
+      {% if tipo == 'seguimiento' %}<button type="button" class="chip" data-insertar="{vendedor}">{vendedor}</button>{% endif %}
+      {% if tipo == 'bienvenida' %}<button type="button" class="chip" data-insertar="{youtube}">{youtube}</button>{% endif %}
+      <span class="contador tenue pequena" data-contador aria-live="off"></span>
+    </div>
+    <p class="ayuda" id="ayuda-{{ f.t.id }}">Para dejar de usar esta versión, apaga «Activa» y guarda.</p>
+    {% if tipo == 'dm' %}
+    <p class="texto-error" data-aviso-landing {% if not f.aviso %}hidden{% endif %}>{{ c.icono('alerta') }}<span>{{ f.aviso or 'Este mensaje privado no lleva {landing}.' }}</span></p>
+    {% elif f.aviso %}
+    <p class="texto-error">{{ c.icono('alerta') }}<span>{{ f.aviso }}</span></p>
+    {% endif %}
+    <div class="vista" data-vista>
+      <p class="vista-titulo tenue pequena">{{ 'Así le llega a «María»' if g.privado else ('Así se verá en tu reel' if tipo == 'fijado' else 'Así verá «María» la respuesta') }} <span class="vista-nota">· se actualiza al guardar</span></p>
+      <div class="burbujas {{ 'burbujas-chat' if g.privado else 'burbujas-comentario' }}">
+        <p class="burbuja">{{ f.vista }}</p>
+      </div>
+      <details class="sin-nombre">
+        <summary>Ver cómo queda si no se sabe el nombre</summary>
+        <div class="burbujas {{ 'burbujas-chat' if g.privado else 'burbujas-comentario' }}"><p class="burbuja">{{ f.vista_sin_nombre }}</p></div>
+      </details>
+    </div>
+    <div class="variante-pie">
+      <label class="interruptor"><input type="checkbox" name="activo" value="1" {% if f.t.activo %}checked{% endif %}><span>Activa</span></label>
+      <button data-ocupado="Guardando…">{{ c.icono('check') }}<span>Guardar</span></button>
+    </div>
+  </form>
+  {% endfor %}
+  </div>
+
+  <form method="post" action="/textos/nuevo" class="nueva" data-vigilar>
+    <input type="hidden" name="tipo" value="{{ tipo }}">
+    <label for="nuevo-{{ tipo }}">Añadir otra variante</label>
+    <textarea id="nuevo-{{ tipo }}" name="contenido" rows="2" placeholder="Escribe aquí una versión nueva…" required></textarea>
+    <div class="acciones"><button class="secundario" data-ocupado="Añadiendo…"><span>+ Añadir variante</span></button></div>
+  </form>
+</section>
+{% endfor %}
+{% endblock %}

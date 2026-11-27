@@ -1,0 +1,31 @@
+[project]
+name = "bot-tiktok"
+version = "0.1.0"
+description = "Bot local: a quien comenta en los reels le envía un mensaje privado y le responde en el comentario."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "playwright>=1.50",
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.20",
+    "platformdirs>=4.3",
+    "python-dotenv>=1.0",
+    "tzdata>=2024.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.28",
+    "aiosmtpd>=1.4.6",
+    "trustme>=1.2.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

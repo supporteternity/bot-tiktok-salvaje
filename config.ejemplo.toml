@@ -1,0 +1,23 @@
+# Plantilla de configuración del bot (SIN secretos).
+# Copia este archivo como "config.toml" en la carpeta de datos del bot:
+#   Mac:     ~/Library/Application Support/BotTikTok/config.toml
+#   Windows: %LOCALAPPDATA%\BotTikTok\config.toml
+# Lo que pongas aquí se usa como valor inicial; después se edita desde el panel.
+
+# Cuenta de TikTok que maneja el bot (sin @)
+cuenta = ""
+
+# Modo de respuesta pública: "todos" (el del instructivo), "solo_cerrados" o "solo_publicas"
+modo_publica = "todos"
+
+# URL de la landing que se pone en {landing}
+landing = ""
+
+# Cuentas del equipo cuyos comentarios se saltan (sin @)
+cuentas_equipo = []
+
+# Emails que reciben las alertas y el resumen diario
+emails_alerta = []
+
+# Modo de prueba: hace todo menos pulsar "enviar"/"publicar"
+modo_prueba = true

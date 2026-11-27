@@ -1,0 +1,100 @@
+{#- Piezas compartidas del panel: cómo se presenta cada estado del bot, nombres claros de los estados
+    de un comentario y los iconos (SVG en línea, sin archivos extra). Solo presentación. -#}
+
+{#- 'resumen': una frase corta bajo el estado. 'pasos': solo si a la persona le toca hacer algo. -#}
+{%- set ESTADOS = {
+  'activo':          {'clase': 'verde', 'icono': 'punto',  'titulo': 'Trabajando',
+                      'resumen': 'Todo en orden. No tienes que hacer nada.', 'pasos': ''},
+  'descansando':     {'clase': 'azul',  'icono': 'luna',   'titulo': 'Descansando',
+                      'resumen': 'Pausa normal para ir a ritmo humano. Sigue solo.', 'pasos': ''},
+  'pausado':         {'clase': 'gris',  'icono': 'pausa',  'titulo': 'En pausa',
+                      'resumen': 'Alguien lo pausó desde este panel.', 'pasos': 'Pulsa «Reanudar» cuando quieras que siga.'},
+  'frenado':         {'clase': 'ambar', 'icono': 'freno',  'titulo': 'Frenado por TikTok',
+                      'resumen': 'TikTok pidió ir más despacio. Espera y sigue solo.', 'pasos': ''},
+  'parado_revision': {'clase': 'rojo',  'icono': 'alerta', 'titulo': 'Necesita a una persona',
+                      'resumen': 'El bot se paró y te escribió por correo.', 'pasos': 'Lee el correo de alertas, resuelve lo que dice y pulsa «Reanudar».'},
+  'sin_senal':       {'clase': 'rojo',  'icono': 'alerta', 'titulo': 'El bot no responde',
+                      'resumen': 'Hace más de 10 minutos que no da señales.', 'pasos': 'Comprueba que la computadora esté encendida y la ventana de Chrome del bot abierta. Si en 5 minutos sigue igual, reinicia la computadora.'},
+  'sesion_cerrada':  {'clase': 'rojo',  'icono': 'alerta', 'titulo': 'Sesión de TikTok cerrada', 'corto': 'Sesión cerrada',
+                      'resumen': 'TikTok cerró la sesión del bot.', 'pasos': 'Ve a «Tu cuenta de TikTok» (botón de abajo), pulsa «Volver a iniciar sesión» y entra una vez con el código QR. El bot sigue solo.', 'enlace': ('/cuenta', 'Ir a mi cuenta de TikTok')},
+  'sin_cuenta':      {'clase': 'ambar', 'icono': 'alerta', 'titulo': 'Falta conectar tu cuenta de TikTok', 'corto': 'Sin cuenta de TikTok',
+                      'resumen': 'El bot aún no tiene ninguna cuenta de TikTok. No hace nada hasta que la conectes.', 'pasos': 'Pulsa «Conectar mi cuenta», entra con el código QR desde la app de TikTok del celular y pulsa «Ya entré». El bot la conecta solo.', 'enlace': ('/cuenta', 'Conectar mi cuenta')},
+  'falta_configurar': {'clase': 'ambar', 'icono': 'alerta', 'titulo': 'Le falta algo para trabajar', 'corto': 'Falta configurar',
+                      'resumen': 'El bot está listo, pero no puede escribir a nadie hasta que completes lo que falta.', 'pasos': 'Completa los pasos de la lista «Antes de que el bot pueda trabajar» (arriba en esta página). En cuanto estén, el bot empieza solo.'},
+  'apagado':         {'clase': 'gris',  'icono': 'apagar', 'titulo': 'Apagado',
+                      'resumen': 'No abre TikTok ni escribe a nadie, y la computadora puede dormir. Sigue apagado aunque reinicies la computadora.', 'pasos': 'Pulsa «Encender» cuando quieras que vuelva a trabajar.'},
+  'reanudando':      {'clase': 'gris',  'icono': 'reloj',  'titulo': 'Reanudando…',
+                      'resumen': 'El bot vuelve a ponerse en marcha. En un momento verás su estado.', 'pasos': ''},
+} -%}
+
+{%- macro modo_efectivo(modo, pausado, sin_senal=False) -%}
+{%- if modo == 'apagado' -%}apagado
+{%- elif sin_senal -%}sin_senal
+{%- elif modo in ('parado_revision', 'sesion_cerrada', 'sin_cuenta') -%}{{ modo }}
+{%- elif not pausado -%}{{ 'activo' if not modo else ('reanudando' if modo == 'pausado' else modo) }}{%- else -%}pausado{%- endif -%}
+{%- endmacro -%}
+
+{%- set COMENTARIOS = {
+  'en_cola':               ('En cola', 'azul'),
+  'historico':             ('Antiguo (en espera)', 'gris'),
+  'dm_enviando':           ('Enviando mensaje', 'azul'),
+  'dm_enviado':            ('Mensaje enviado', 'verde'),
+  'dm_cerrado':            ('Mensajes cerrados', 'ambar'),
+  'resp_pendiente':        ('Falta responder en público', 'azul'),
+  'alt_pendiente':         ('Falta responder en público', 'azul'),
+  'error':                 ('Error: se reintentará', 'ambar'),
+  'completado':            ('Hecho', 'verde'),
+  'completado_cerrado':    ('Hecho: no se le pudo escribir, se le contestó en público', 'verde'),
+  'completado_publica':    ('Hecho: respuesta pública', 'verde'),
+  'rec_pendiente':         ('Vuelve a comentar: falta el recordatorio', 'azul'),
+  'completado_recordatorio': ('Hecho: recordatorio en público', 'verde'),
+  'saltado_propio':        ('Saltado: cuenta propia o del equipo', 'gris'),
+  'saltado_contactado':    ('Saltado: ya atendida hace poco', 'gris'),
+  'saltado_no_disponible': ('Saltado: comentario o cuenta ya no existe', 'gris'),
+  'saltado_ofensivo':      ('Saltado: ofensivo', 'gris'),
+  'caducado':              ('Saltado: demasiado antiguo', 'gris'),
+  'dudoso':                ('Revisar: no se pudo comprobar el envío', 'rojo'),
+  'error_final':           ('Error: revisar', 'rojo'),
+} -%}
+
+{%- macro icono(nombre, clase='') -%}
+<svg class="icono {{ clase }}" aria-hidden="true" focusable="false"><use href="#i-{{ nombre }}"></use></svg>
+{%- endmacro -%}
+
+{%- macro sprite() -%}
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-textos" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></symbol>
+    <symbol id="i-ajustes" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-correo" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></symbol>
+    <symbol id="i-registro" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></symbol>
+    <symbol id="i-leads" viewBox="0 0 24 24"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"/></symbol>
+    <symbol id="i-reels" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 9 5 3-5 3z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-cerrar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-punto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-luna" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" fill="currentColor"/></symbol>
+    <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+    <symbol id="i-pausa" viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="13.5" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-freno" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" rx="2.5" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 3.5 22 20H2z" fill="currentColor" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.2v.3" stroke="var(--superficie)" stroke-width="2.2"/></symbol>
+    <symbol id="i-apagar" viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.2"/></symbol>
+    <symbol id="i-subir" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+    <symbol id="i-buscar" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
+    <symbol id="i-descargar" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-externo" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-ojo" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-candado" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+    <symbol id="i-cola" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h9"/></symbol>
+    <symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-enviar" viewBox="0 0 24 24"><path d="M21 3 10 14M21 3l-6.5 18-4.5-7-7-4.5z" stroke-linejoin="round"/></symbol>
+    <symbol id="i-publico" viewBox="0 0 24 24"><path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.4-5A8.5 8.5 0 1 1 21 12z" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cerrado" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 14.5 16 9.5M8 9.5l8 5"/></symbol>
+    <symbol id="i-fijar" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3.5 3.5h-11L10 10zM12 13.5V20"/></symbol>
+  </defs>
+</svg>
+{%- endmacro -%}

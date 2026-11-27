@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% import "_comun.html" as c with context %}
+{% block titulo %}Registro{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <h1>Registro</h1>
+    {% if filtro == 'pendientes' %}
+    <p>Personas que aún no han recibido su mensaje, de la que más lleva esperando a la más reciente.</p>
+    {% elif filtro == 'atender' %}
+    <p><strong>Necesitan atención:</strong> personas a las que el bot no pudo escribir por privado (TikTok no lo dejó pasar, tienen los mensajes cerrados…) o con las que no pudo terminar. Una línea por persona, con su último comentario; lo más reciente arriba. Con un clic puedes pedir al bot que les escriba o les comente en público, o escribirles tú desde la app.</p>
+    {% else %}
+    <p>Los últimos comentarios que ha visto el bot y qué hizo con cada uno (máximo 500).</p>
+    {% endif %}
+  </div>
+  <a class="boton boton-secundario" href="/registro.csv{% if filtro %}?estado={{ filtro }}{% endif %}">{{ c.icono('descargar') }}<span>Exportar CSV</span></a>
+</div>
+
+{% if pedido %}
+<p class="aviso aviso-ambar" role="status">{{ c.icono('info') }}<span><strong>Mensaje privado a @{{ pedido }} en camino.</strong>
+  {% if espera_bot %}{{ espera_bot }}{% else %}El bot lo envía en unos segundos; esta página se actualiza sola.{% endif %}
+  {% if en_pausa %} Ojo: TikTok no está dejando pasar los mensajes privados de la cuenta ahora mismo, así que puede que este tampoco llegue.{% endif %}</span></p>
+{% endif %}
+{% if publica %}
+<p class="aviso aviso-ambar" role="status">{{ c.icono('info') }}<span><strong>Comentario público a @{{ publica }} en camino.</strong>
+  {% if espera_bot %}{{ espera_bot }}{% else %}El bot lo publica en unos segundos; esta página se actualiza sola.{% endif %}</span></p>
+{% endif %}
+
+<nav class="filtros" aria-label="Filtrar por estado">
+  <a href="/registro" class="filtro-pildora" {% if not filtro %}aria-current="true"{% endif %}>Todos</a>
+  <a href="/registro?estado=atender" class="filtro-pildora tono-rojo" {% if filtro == 'atender' %}aria-current="true"{% endif %}><span class="punto" aria-hidden="true"></span>Necesitan atención</a>
+  <a href="/registro?estado=pendientes" class="filtro-pildora tono-azul" {% if filtro == 'pendientes' %}aria-current="true"{% endif %}><span class="punto" aria-hidden="true"></span>Sin mensaje todavía</a>
+  {% for e in estados %}
+  {%- set nombre, tono = c.COMENTARIOS.get(e, (e, 'gris')) -%}
+  <a href="/registro?estado={{ e }}" class="filtro-pildora tono-{{ tono }}" {% if e == filtro %}aria-current="true"{% endif %}><span class="punto" aria-hidden="true"></span>{{ nombre }}</a>
+  {% endfor %}
+</nav>
+
+<div class="tarjeta tarjeta-tabla">
+  {% if filas %}
+  <div class="tabla-cabeza">
+    <label class="buscador solo-js">
+      {{ c.icono('buscar') }}
+      <span class="solo-lector">Buscar por usuario o comentario</span>
+      <input type="search" placeholder="Buscar por @usuario o texto…" data-buscar autocomplete="off">
+    </label>
+    <p class="tenue pequena" aria-live="polite"><span data-cuantas>{{ filas | length }}</span> de {{ filas | length }} comentarios</p>
+  </div>
+
+  <table role="table" class="tabla-registro">
+    <thead role="rowgroup">
+      <tr role="row"><th role="columnheader" scope="col">Comentado</th><th role="columnheader" scope="col">Usuario</th><th role="columnheader" scope="col">Comentario</th><th role="columnheader" scope="col">Estado</th><th role="columnheader" scope="col">Detalle</th></tr>
+    </thead>
+    <tbody role="rowgroup">
+    {% for f in filas %}
+    {%- set nombre, tono = c.COMENTARIOS.get(f.estado, (f.estado, 'gris')) -%}
+    <tr role="row" data-fila>
+      <td role="cell" class="col-fecha" data-titulo="Comentado">{{ f.comentado_en | local }}</td>
+      <td role="cell" class="col-usuario" data-titulo="Usuario"><strong>@{{ f.usuario }}</strong></td>
+      <td role="cell" class="col-texto" data-titulo="Comentario">{{ f.texto or '' }}{% if f.ofensivo %} <span class="etiqueta tono-rojo sin-punto">ofensivo</span>{% endif %}</td>
+      <td role="cell" class="col-estado" data-titulo="Estado"><span class="etiqueta tono-{{ tono }}" title="{{ f.estado }}">{{ nombre }}</span></td>
+      <td role="cell" class="col-detalle" data-titulo="Detalle">{{ f.ultimo_error or '' }}{% if f.captura %} <a class="enlace-captura" href="/capturas/{{ f.captura.replace('\\', '/').split('/')[-1] }}" target="_blank" rel="noopener">{{ c.icono('externo') }}Ver captura</a>{% endif %}
+        {%- if f.a_mano %}{% set m_estado, m_error = f.a_mano.split('|', 1) %}
+        <p class="a-mano a-mano-{{ m_estado }}"{% if m_estado in ('pendiente', 'enviando') %} data-enviando{% endif %}>
+          {%- if m_estado in ('pendiente', 'enviando') %}Enviando el mensaje privado…
+          {%- elif m_estado == 'enviado' %}{{ c.icono('check') }}Mensaje privado enviado a mano.
+          {%- elif m_estado == 'simulado' %}Mensaje privado a mano en modo de prueba: no se envió de verdad.
+          {%- elif m_estado == 'dudoso' %}TikTok tampoco dejó pasar el mensaje privado enviado a mano.
+          {%- elif m_estado == 'cerrado' %}Tiene los mensajes cerrados: no se le puede escribir.
+          {%- else %}No se pudo enviar a mano{% if m_error %}: {{ m_error }}{% endif %}.{% endif %}</p>
+        {%- endif %}
+        {%- if f.publica_a_mano %}{% set p_estado, p_error = f.publica_a_mano.split('|', 1) %}
+        <p class="a-mano a-mano-{{ p_estado }}"{% if p_estado in ('pendiente', 'enviando') %} data-enviando{% endif %}>
+          {%- if p_estado in ('pendiente', 'enviando') %}Publicando el comentario…
+          {%- elif p_estado == 'enviado' %}{{ c.icono('check') }}Comentario publicado a mano.
+          {%- elif p_estado == 'simulado' %}Comentario a mano en modo de prueba: no se publicó de verdad.
+          {%- elif p_estado == 'dudoso' %}No se pudo comprobar si el comentario a mano se publicó: míralo en TikTok antes de repetir.
+          {%- else %}No se pudo comentar a mano{% if p_error %}: {{ p_error }}{% endif %}.{% endif %}</p>
+        {%- endif %}
+        {%- if con_boton(f) or con_boton_publica(f) %}
+        <div class="botones-a-mano">
+        {%- if con_boton(f) %}
+        <form method="post" action="/registro/privado/{{ f.user_id }}" class="form-a-mano">
+          <button type="submit" class="boton boton-secundario boton-chico">{{ c.icono('enviar') }}<span>{{ 'Intentar otra vez' if f.a_mano else 'Enviar mensaje privado ahora' }}</span></button>
+        </form>
+        {%- endif %}
+        {%- if con_boton_publica(f) %}
+        <form method="post" action="/registro/publica/{{ f.id }}" class="form-a-mano">
+          <button type="submit" class="boton boton-secundario boton-chico">{{ c.icono('enviar') }}<span>{{ 'Comentar otra vez' if f.publica_a_mano else 'Comentar en público ahora' }}</span></button>
+        </form>
+        {%- endif %}
+        </div>
+        {%- endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="vacio" data-sin-resultados hidden>Ningún comentario coincide con la búsqueda.</p>
+  {% else %}
+  <p class="vacio">{% if filtro == 'pendientes' %}Nadie esperando: todos han recibido su mensaje.{% elif filtro %}No hay comentarios con este estado.{% else %}Todavía no hay comentarios. Aparecerán aquí en cuanto alguien comente en tus reels.{% endif %}</p>
+  {% endif %}
+</div>
+{% if enviando_a_mano %}
+<script>/* Un mensaje privado o un comentario a mano está saliendo: se mira cómo fue cada pocos segundos. */
+  setTimeout(function () { location.reload(); }, 4000);</script>
+{% endif %}
+{% endblock %}

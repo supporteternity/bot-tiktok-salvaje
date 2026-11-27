@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% import "_comun.html" as c with context %}
+{% block titulo %}Cuenta de TikTok{% endblock %}
+{% block contenido %}
+<div class="estrecho-ajustes">
+<div class="encabezado">
+  <div>
+    <h1>Tu cuenta de TikTok</h1>
+    <p>La cuenta con la que el bot contesta a los comentarios. Se conecta una sola vez y se queda guardada en esta computadora.</p>
+  </div>
+</div>
+
+{% if listo and cta.estado != 'conectando' %}
+<div class="aviso aviso-verde" role="status">{{ c.icono('check') }}<div><h2>Sesión guardada</h2>
+  <p>El bot está arrancando y comprobando la cuenta. En un minuto verás aquí «Conectada». Si no cambia, recarga la página.</p></div></div>
+{% endif %}
+
+{% if cta.estado == 'conectando' %}
+<section class="tarjeta cuenta-tarjeta tono-azul" aria-labelledby="t-cta">
+  <h2 id="t-cta">Se abrió una ventana de TikTok</h2>
+  <ol class="pasos">
+    <li>Busca la ventana de Chrome que se acaba de abrir{% if es_mac %} (icono «Google Chrome for Testing» en el Dock){% endif %}.</li>
+    <li>Elige <strong>«Usar código QR»</strong> y escanéalo con la app de TikTok del celular: <strong>Perfil → ☰ → icono de escanear</strong>.
+      <span class="ayuda">Comprueba antes que en la app está abierta la cuenta que quieres conectar.</span></li>
+    <li>Cuando veas tu cuenta dentro, vuelve aquí y pulsa <strong>«Ya entré»</strong>.</li>
+  </ol>
+  <form method="post" action="/cuenta/listo"><button class="boton-grande" data-ocupado="Guardando…">{{ c.icono('check') }}<span>Ya entré</span></button></form>
+  <p class="ayuda">Si TikTok dice «Maximum number of attempts reached», cierra la ventana y espera unas horas antes de volver a intentarlo. No insistas.</p>
+</section>
+
+{% elif cta.estado == 'conectada' %}
+<section class="tarjeta cuenta-tarjeta" aria-labelledby="t-cta">
+  <h2 id="t-cta"><span class="etiqueta tono-verde">Conectada</span> <span>@{{ cta.cuenta }}</span></h2>
+  <p class="tenue">El bot usa esta cuenta. No tienes que hacer nada.</p>
+  <div class="acciones">
+    <form method="post" action="/cuenta/conectar"><button class="secundario" data-ocupado="Abriendo…">{{ c.icono('externo') }}<span>Volver a iniciar sesión</span></button></form>
+    <form method="post" action="/cuenta/desconectar" data-confirmar="¿Desconectar @{{ cta.cuenta }}? El bot dejará de trabajar hasta que conectes una cuenta."><button class="secundario" data-ocupado="Desconectando…">{{ c.icono('cerrar') }}<span>Desconectar / cambiar de cuenta</span></button></form>
+  </div>
+</section>
+
+{% else %}
+<section class="tarjeta cuenta-tarjeta tono-{{ 'rojo' if cta.estado == 'cerrada' else 'ambar' }}" aria-labelledby="t-cta">
+  {% if cta.estado == 'cerrada' %}
+  <h2 id="t-cta"><span class="etiqueta tono-rojo">Sesión cerrada</span> <span>@{{ cta.cuenta }}</span></h2>
+  <p>TikTok cerró la sesión del bot. Vuelve a entrar una vez y el bot sigue solo.</p>
+  {% else %}
+  <h2 id="t-cta"><span class="etiqueta tono-ambar">Sin conectar</span></h2>
+  <p>El bot todavía no tiene ninguna cuenta de TikTok. No hace nada hasta que la conectes.</p>
+  {% if cta.no_vimos_sesion %}
+  <p class="aviso aviso-ambar">{{ c.icono('alerta') }}<span><strong>No vimos tu cuenta dentro de TikTok.</strong> Puede que pulsaras «Ya entré» antes de terminar. Pulsa el botón otra vez, escanea el código QR y espera a ver tu perfil de TikTok en esa ventana; entonces pulsa «Ya entré».</span></p>
+  {% endif %}
+  {% endif %}
+  <p class="tenue">Al pulsar el botón se abre una ventana de TikTok. Entras con el código QR desde la app del celular, como cuando entras en una computadora nueva, y pulsas «Ya entré».</p>
+  <form method="post" action="/cuenta/conectar"><button class="boton-grande" data-ocupado="Abriendo TikTok…">{{ c.icono('externo') }}<span>{{ 'Volver a iniciar sesión' if cta.estado == 'cerrada' else 'Conectar mi cuenta de TikTok' }}</span></button></form>
+  <p class="ayuda">Inicia sesión una sola vez. Si TikTok dice «Maximum number of attempts reached», espera unas horas antes de volver a intentarlo.</p>
+</section>
+{% endif %}
+</div>
+{% if cta.estado == 'conectando' or listo %}<script>setTimeout(() => location.reload(), {{ 5000 if cta.estado == 'conectando' else 15000 }});</script>{% endif %}
+{% endblock %}

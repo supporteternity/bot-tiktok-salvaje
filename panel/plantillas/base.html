@@ -1,0 +1,70 @@
+{% import "_comun.html" as c with context %}
+{%- set modo_ef = c.modo_efectivo(modo_bot, pausado_bot, sin_senal_bot) | trim -%}
+{%- set est = c.ESTADOS.get(modo_ef, c.ESTADOS['activo']) -%}
+{%- set SECCIONES = [('inicio', '/', 'Inicio'), ('leads', '/leads', 'Leads'), ('textos', '/textos', 'Textos'), ('ajustes', '/ajustes', 'Ajustes'),
+                     ('correo', '/correo', 'Correo'), ('registro', '/registro', 'Registro'), ('reels', '/reels', 'Reels')] -%}
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block titulo %}Panel{% endblock %} · SALVAJE</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/estaticos/marca/icono-32.png?v={{ version_estaticos }}">
+  <link rel="apple-touch-icon" href="/estaticos/marca/icono-180.png?v={{ version_estaticos }}">
+  <link rel="preload" href="/estaticos/fuentes/montserrat.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/estaticos/estilo.css?v={{ version_estaticos }}">
+  <script>/* Modo elegido con el botón (claro u oscuro); si no se eligió nada, el de la computadora. Va aquí para que no parpadee. */
+    try { var t = localStorage.getItem('tema-panel'); if (t === 'claro' || t === 'oscuro') document.documentElement.dataset.tema = t; } catch (e) {}</script>
+  <script src="/estaticos/panel.js?v={{ version_estaticos }}" defer></script>
+</head>
+<body class="pagina-{{ seccion }}">
+  {{ c.sprite() }}
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+  <header class="cabecera">
+    <div class="cabecera-dentro">
+      <a class="marca" href="/" aria-label="SALVAJE, ir a Inicio">
+        <span class="marca-placa">
+          <img class="marca-casco" src="/estaticos/marca/salvaje-casco.png?v={{ version_estaticos }}" alt="" width="29" height="32">
+          <img class="marca-nombre" src="/estaticos/marca/salvaje-nombre.png?v={{ version_estaticos }}" alt="SALVAJE" width="119" height="28">
+        </span>
+        <span class="marca-sub">Panel del bot</span>
+      </a>
+      <nav class="nav-escritorio" aria-label="Secciones">
+        {% for clave, url, nombre in SECCIONES %}
+        <a href="{{ url }}" {% if seccion == clave %}aria-current="page"{% endif %}>{{ c.icono(clave) }}<span>{{ nombre }}</span></a>
+        {% endfor %}
+      </nav>
+      <div class="acciones-cabecera">
+      {% if modo_bot is defined and modo_bot %}
+      <a class="pildora-estado tono-{{ est.clase }}" href="/" title="Estado del bot: {{ est.corto or est.titulo }}">
+        {{ c.icono(est.icono, 'icono-estado') }}<span>{{ est.corto or est.titulo }}</span>
+      </a>
+      {% else %}<span class="pildora-hueco" aria-hidden="true"></span>{% endif %}
+      <button type="button" class="boton-tema solo-js" data-boton-tema>
+        {{ c.icono('luna', 'a-oscuro') }}{{ c.icono('sol', 'a-claro') }}<span class="boton-tema-texto">Modo oscuro</span>
+      </button>
+
+      <details class="menu-movil">
+        <summary aria-label="Abrir menú">{{ c.icono('menu', 'abrir') }}{{ c.icono('cerrar', 'cerrar') }}<span>Menú</span></summary>
+        <nav aria-label="Secciones">
+          {% for clave, url, nombre in SECCIONES %}
+          <a href="{{ url }}" {% if seccion == clave %}aria-current="page"{% endif %}>{{ c.icono(clave) }}<span>{{ nombre }}</span></a>
+          {% endfor %}
+        </nav>
+      </details>
+      </div>
+    </div>
+  </header>
+  {% if modo_prueba %}
+  <div class="franja franja-ambar" role="note">
+    <div class="franja-dentro">{{ c.icono('alerta') }}
+      <p><strong>Modo de prueba activo:</strong> el bot hace todo menos pulsar «enviar» y «publicar». Se quita en <a href="/ajustes#modo-prueba">Ajustes</a>.</p>
+    </div>
+  </div>
+  {% endif %}
+  <main id="contenido" tabindex="-1">
+    {% block contenido %}{% endblock %}
+  </main>
+</body>
+</html>

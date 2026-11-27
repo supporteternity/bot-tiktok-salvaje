@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% import "_comun.html" as c with context %}
+{% block titulo %}Reels{% endblock %}
+{% block contenido %}
+{%- set FIJADO = {
+  'fijado':    ('Comentario fijado', 'verde'),
+  'manual':    ('Comentario fijado a mano', 'verde'),
+  'pendiente': ('Sin comentario fijado', 'gris'),
+  'error':     ('No se pudo fijar el comentario', 'rojo'),
+} -%}
+<div class="encabezado">
+  <div>
+    <h1>Reels</h1>
+    <p>Los reels donde el bot busca comentarios.</p>
+    <details class="mas-info"><summary>{{ c.icono('info') }}<span>¿Cómo funciona?</span></summary>
+      <p>La <strong>palabra clave</strong> de cada video (Comenta "VENTAS"…) se saca sola del texto del video y puedes cambiarla: el bot responde a todos los comentarios igual, la palabra solo se apunta en cada lead para saber de dónde vino. El comentario fijado lo pones tú desde la app; márcalo aquí para llevar la cuenta.</p>
+    </details>
+  </div>
+</div>
+
+<div class="tarjeta tarjeta-tabla">
+  {% if filas %}
+  <table role="table" class="tabla-reels">
+    <thead role="rowgroup">
+      <tr role="row"><th role="columnheader" scope="col">Reel</th><th role="columnheader" scope="col">Vigilado</th><th role="columnheader" scope="col">Comentarios</th><th role="columnheader" scope="col">Palabra clave</th><th role="columnheader" scope="col">Comentario fijado</th></tr>
+    </thead>
+    <tbody role="rowgroup">
+    {% for r in filas %}
+    {%- set nombre, tono = FIJADO.get(r.fijado_estado, (r.fijado_estado, 'gris')) -%}
+    <tr role="row">
+      <td role="cell" class="col-usuario" data-titulo="Reel"><a class="enlace-reel" href="{{ r.url }}" target="_blank" rel="noopener" title="Abrir el reel {{ r.id }} en TikTok">{{ c.icono('reels') }}<span>Reel …{{ r.id[-6:] }}</span></a>
+        <br><span class="tenue pequena">Publicado: {{ r.publicado_en | local }}</span></td>
+      <td role="cell" data-titulo="Vigilado">{% if r.activo %}<span class="etiqueta tono-verde">Vigilado</span>{% else %}<span class="etiqueta tono-gris">Ya no se vigila</span>{% endif %}</td>
+      <td role="cell" data-titulo="Comentarios" class="col-numero"><strong>{{ r.comentarios }}</strong> <span class="tenue">{{ 'comentario' if r.comentarios == 1 else 'comentarios' }}</span></td>
+      <td role="cell" data-titulo="Palabra clave">
+        <form method="post" action="/reels/{{ r.id }}/palabra" class="form-palabra">
+          <label class="solo-lector" for="palabra-{{ r.id }}">Palabra clave del reel …{{ r.id[-6:] }}</label>
+          <input id="palabra-{{ r.id }}" name="palabra" value="{{ r.palabra_clave or '' }}" placeholder="Sin palabra" maxlength="40" autocomplete="off">
+          <button class="secundario" data-ocupado="…" title="Guardar la palabra clave">{{ c.icono('check') }}<span class="solo-lector">Guardar</span></button>
+        </form>
+        {% if r.palabra_clave %}<span class="tenue pequena">{{ r.con_palabra }} de {{ r.comentarios }} la traen</span>{% endif %}
+      </td>
+      <td role="cell" class="col-fijado" data-titulo="Comentario fijado"><span class="etiqueta tono-{{ tono }}">{{ nombre }}</span>{% if r.fijado_estado not in ('fijado', 'manual') %}
+        <form method="post" action="/reels/{{ r.id }}/fijado-manual"><button class="secundario boton-chico" data-ocupado="Marcando…">{{ c.icono('fijar') }}<span>Ya lo fijé</span></button></form>
+      {% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="vacio">
+    <p><strong>Todavía no hay reels detectados.</strong></p>
+    <p>Aparecerán aquí solos en cuanto el bot lea los comentarios de tu cuenta.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

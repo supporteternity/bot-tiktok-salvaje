@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% import "_comun.html" as c with context %}
+{% block titulo %}Inicio{% endblock %}
+{% block contenido %}
+<dialog id="confirmar-apagar" aria-labelledby="t-confirmar-apagar">
+  <div class="dialogo">
+    <h2 id="t-confirmar-apagar">¿Apagar el bot?</h2>
+    <p>Se cierra su ventana de Chrome y deja de escribir a la gente. Los comentarios nuevos se quedan esperando y se atienden cuando lo enciendas. Seguirá apagado aunque reinicies la computadora.</p>
+    <p class="tenue pequena">Si solo quieres pararlo un rato, usa «Pausar».</p>
+    <div class="acciones">
+      <button type="button" class="secundario" data-cancelar><span>Cancelar</span></button>
+      <button type="button" data-aceptar>{{ c.icono('apagar') }}<span>Sí, apagar</span></button>
+    </div>
+  </div>
+</dialog>
+{%- set modo_ef = c.modo_efectivo(estado.modo, pausado, sin_senal_bot) | trim -%}
+{%- set est = c.ESTADOS.get(modo_ef, c.ESTADOS['activo']) -%}
+{%- set puede_reanudar = pausado or estado.modo in ('parado_revision', 'sesion_cerrada') -%}
+
+{% if pasos_pendientes %}
+{%- set hechos = pasos | selectattr('hecho') | list -%}
+{%- set necesarios = pasos | rejectattr('opcional') | list -%}
+{%- set necesarios_hechos = necesarios | selectattr('hecho') | list -%}
+<section class="tarjeta pasos-inicio" aria-labelledby="t-pasos">
+  <div class="pasos-cabeza">
+    <div>
+      <h2 id="t-pasos" class="aviso-titulo">Antes de que el bot pueda trabajar</h2>
+      <p class="tenue">Te {{ 'falta' if pasos_pendientes | length == 1 else 'faltan' }} {{ pasos_pendientes | length }} {{ 'paso' if pasos_pendientes | length == 1 else 'pasos' }}. Sin esto el bot no puede enviar mensajes ni avisarte si algo pasa.</p>
+    </div>
+    <p class="pasos-progreso" aria-label="{{ necesarios_hechos | length }} de {{ necesarios | length }} pasos necesarios hechos"><strong>{{ necesarios_hechos | length }}</strong>/{{ necesarios | length }}</p>
+  </div>
+  <ol class="lista-pasos">
+    {% for p in pasos if not p.hecho %}
+    <li class="{{ 'opcional' if p.opcional else 'pendiente' }}">
+      <span class="marca-paso" aria-hidden="true"></span>
+      <span class="texto-paso">{{ p.texto }}{% if p.opcional %} <span class="tenue">({{ p.nota or 'opcional: lo fijas tú a mano en cada reel' }})</span>{% endif %}<span class="solo-lector">: pendiente</span></span>
+      {% if p.enlace %}<a class="boton{{ ' boton-secundario' if p.opcional else '' }} boton-paso" href="{{ p.enlace }}">{{ p.boton }}</a>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% if hechos %}
+  <details class="pasos-hechos">
+    <summary>{{ c.icono('check') }}<span>{{ hechos | length }} {{ 'paso listo' if hechos | length == 1 else 'pasos listos' }}</span></summary>
+    <ul role="list">{% for p in hechos %}<li>{{ c.icono('check') }}<span>{{ p.texto }}</span></li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+
+<p id="anuncio-estado" class="solo-lector" aria-live="polite"></p>
+
+{% if correo_fallo %}
+<p class="aviso aviso-rojo" role="alert">{{ c.icono('alerta') }}<span><strong>No te están llegando los correos de aviso del bot.</strong>
+  El último no se pudo enviar: {{ correo_fallo }} <a href="/correo">Revisar el correo de alertas</a></span></p>
+{% endif %}
+{% if atender %}
+<p class="aviso aviso-rojo">{{ c.icono('alerta') }}<span><strong>{{ atender }} {{ 'persona necesita' if atender == 1 else 'personas necesitan' }} atención</strong> (últimos 7 días): el bot no les pudo escribir por privado o no pudo terminar con ellas.
+  <a href="/registro?estado=atender">Verlas y actuar</a></span></p>
+{% endif %}
+{% if privados_pausa %}
+<p class="aviso aviso-ambar">{{ c.icono('alerta') }}<span><strong>Mensajes privados en pausa hasta {{ privados_pausa.isoformat() | local }} (Utah).</strong>
+  TikTok no dejó pasar los últimos privados y, para cuidar la cuenta, el bot no intenta más hasta esa hora. Mientras tanto contesta en público a cada comentario invitando a escribir, y a quien escribe le manda el enlace. Después vuelve a probar solo. No tienes que hacer nada.</span></p>
+{% endif %}
+
+<div class="tablero">
+  <section id="vivo-estado" data-vivo data-vivo-clave="{{ modo_ef }}" class="estado tono-{{ est.clase }} estado-{{ modo_ef }}" aria-labelledby="t-estado">
+    <div class="estado-cabeza">
+      <span class="estado-halo" aria-hidden="true">{{ c.icono(est.icono) }}</span>
+      <div>
+        <p class="estado-antetitulo">El bot está</p>
+        <h1 id="t-estado" data-titulo-estado>{{ est.titulo }}</h1>
+      </div>
+    </div>
+    <p class="estado-resumen">{% if pasos_pendientes and modo_ef in ('activo', 'descansando') %}Encendido, pero sin poder enviar: completa los pasos de arriba.{% else %}{{ est.resumen }}{% endif %}
+      {%- if estado.frenado_hasta and modo_ef in ('frenado', 'descansando') %} Vuelve a las {{ estado.frenado_hasta | local }} (Utah).{% endif %}</p>
+    {% if estado.mensaje and est.clase in ('rojo', 'ambar') and modo_ef != 'sin_senal' %}
+    <p class="estado-motivo">Motivo: {{ estado.mensaje }}</p>
+    {% endif %}
+    {% if est.pasos %}
+    <div class="que-hacer">
+      {{ c.icono('info') }}
+      <p><strong>Qué hacer:</strong> {{ est.pasos }}</p>
+    </div>
+    {% if est.enlace %}<a class="boton boton-claro boton-grande boton-enlace-estado" href="{{ est.enlace[0] }}">{{ c.icono('externo') }}<span>{{ est.enlace[1] }}</span></a>{% endif %}
+    {% endif %}
+    <div class="estado-cola" aria-labelledby="t-cola">
+      {% if cola %}
+      <a class="estado-cola-numero estado-cola-enlace" href="/registro?estado=pendientes"><strong data-cifra="cola">{{ cola }}</strong><span id="t-cola">{{ 'persona esperando su mensaje' if cola == 1 else 'personas esperando su mensaje' }}</span></a>
+      <ul class="estado-cola-datos" role="list">
+        <li>{{ c.icono('reloj') }}<span>La más antigua, hace <strong>{{ mas_viejo }}</strong></span></li>
+        <li>{{ c.icono('check') }}<span>Todas atendidas en <strong>~{{ estimado }}</strong></span></li>
+      </ul>
+      <a class="boton boton-claro boton-ver-cola" href="/registro?estado=pendientes">{{ c.icono('ojo') }}<span>Ver quiénes son</span></a>
+      {% else %}
+      <p class="estado-cola-numero"><strong data-cifra="cola">{{ cola }}</strong><span id="t-cola">personas esperando su mensaje</span></p>
+      <p class="estado-cola-vacia">Nadie esperando ahora mismo.</p>
+      {% endif %}
+      {% if historico %}<p class="estado-cola-vacia">+ {{ historico }} comentarios de antes de instalar</p>{% endif %}
+    </div>
+    <div class="estado-pie">
+      <div class="estado-botones">
+      {% if modo_ef == 'apagado' %}
+        <form method="post" action="/encender"><button class="boton-claro boton-grande" data-ocupado="Encendiendo…">{{ c.icono('apagar') }}<span>Encender</span></button></form>
+      {% else %}
+        {% if puede_reanudar %}
+        <form method="post" action="/reanudar"><button class="boton-claro boton-grande" data-ocupado="Reanudando…">{{ c.icono('play') }}<span>Reanudar</span></button></form>
+        {% else %}
+        <form method="post" action="/pausar"><button class="boton-vidrio boton-grande" data-ocupado="Pausando…">{{ c.icono('pausa') }}<span>Pausar</span></button></form>
+        {% endif %}
+        <form method="post" action="/apagar" data-confirmar="confirmar-apagar"><button class="boton-texto-claro" data-ocupado="Apagando…">{{ c.icono('apagar') }}<span>Apagar el bot</span></button></form>
+      {% endif %}
+      </div>
+      {% if estado.modo == 'frenado' %}
+      <details class="quitar-freno"{% if error_freno %} open{% endif %}>
+        <summary>{{ c.icono('candado') }}<span>Quitar el freno (solo soporte)</span></summary>
+        <form method="post" action="/quitar-freno" class="campo">
+          <p class="ayuda">Solo si soporte revisó la captura del registro y TikTok no avisó de nada (falsa alarma).</p>
+          {% if error_freno %}<p class="texto-error" role="alert">{{ c.icono('alerta') }}<span>La clave de soporte no es correcta.</span></p>{% endif %}
+          <label for="clave-freno">Clave de soporte</label>
+          <input type="password" id="clave-freno" name="clave_soporte" autocomplete="off" required>
+          <button class="boton-claro" data-ocupado="Quitando…">{{ c.icono('play') }}<span>Quitar el freno</span></button>
+        </form>
+      </details>
+      {% endif %}
+      <p class="latido" title="El bot da señal de vida al menos una vez por minuto">{{ c.icono('reloj') }}<span>{% if latido == '—' %}Sin señal del bot todavía{% elif latido == '0 min' %}Última señal: hace menos de 1 min{% else %}Última señal: hace {{ latido }}{% endif %} · <span data-actualizado>actualizado ahora</span></span></p>
+    </div>
+  </section>
+
+  <section id="vivo-hoy" data-vivo class="tarjeta hoy" aria-labelledby="t-hoy">
+    <h2 id="t-hoy">Hoy</h2>
+    <ul class="cifras" role="list">
+      <li class="cifra tono-verde">
+        <span class="cifra-icono">{{ c.icono('enviar') }}</span>
+        <strong data-cifra="enviados">{{ enviados }}</strong><span>mensajes</span>
+      </li>
+      <li class="cifra tono-azul">
+        <span class="cifra-icono">{{ c.icono('publico') }}</span>
+        <strong data-cifra="publicas">{{ publicas }}</strong><span>en público</span>
+      </li>
+      <li class="cifra tono-ambar">
+        <span class="cifra-icono">{{ c.icono('cerrado') }}</span>
+        <strong data-cifra="cerrados">{{ cerrados }}</strong><span>mensajes cerrados</span>
+      </li>
+      <li class="cifra tono-verde">
+        <span class="cifra-icono">{{ c.icono('leads') }}</span>
+        <strong data-cifra="leads_hoy">{{ leads_hoy }}</strong><span><a href="/leads">{{ 'número recibido' if leads_hoy == 1 else 'números recibidos' }}</a></span>
+      </li>
+      <li class="cifra {{ 'tono-rojo' if errores else 'tono-gris' }}">
+        <span class="cifra-icono">{{ c.icono('alerta' if errores else 'check') }}</span>
+        <strong data-cifra="errores">{{ errores }}</strong><span>{{ 'errores del bot' if errores != 1 else 'error del bot' }}</span>
+      </li>
+    </ul>
+    {% if leads_sin_hablar or personas_esperando %}
+    <p class="aviso aviso-ambar">{{ c.icono('leads') }}<span>
+      {% if leads_sin_hablar %}<strong>{{ leads_sin_hablar }} {{ 'persona dejó su número' if leads_sin_hablar == 1 else 'personas dejaron su número' }}</strong> y {{ 'falta' if leads_sin_hablar == 1 else 'faltan' }} por marcar como «ya hablé». {% endif %}
+      {% if personas_esperando %}<strong>{{ personas_esperando }} {{ 'persona espera' if personas_esperando == 1 else 'personas esperan' }}</strong> que alguien del equipo le{{ 's' if personas_esperando != 1 else '' }} conteste. {% endif %}
+      <a href="/leads">Ver en Leads</a></span></p>
+    {% endif %}
+  </section>
+
+</div>
+
+<section class="tarjeta ritmo" id="velocidad" aria-labelledby="t-ritmo">
+  {%- set actual = velocidades[nivel] -%}
+  <div class="ritmo-cabeza">
+    <div>
+      <h2 id="t-ritmo">Velocidad de respuesta</h2>
+      <p class="tenue">Cuánto escribe el bot. Más rápido = la gente recibe antes su mensaje, pero hay más riesgo para la cuenta.</p>
+    </div>
+    <ul class="ritmo-resumen" role="list" aria-label="Lo que usa ahora el bot">
+      <li><span>Escribe</span><strong>cada {{ actual.cada }}</strong></li>
+      <li><span>20 comentarios</span><strong>en {{ actual.veinte }}</strong></li>
+      <li><span>Máximo al día</span><strong>{{ tope_dm_dia }}{% if tope_seguidores %} + {{ tope_seguidores }}{% endif %}</strong></li>
+    </ul>
+  </div>
+  {% if aviso_velocidad == 'ok' %}<p class="texto-ok" role="status">{{ c.icono('check') }}<span>Guardado. El bot lo usa desde el próximo mensaje.</span></p>{% endif %}
+  {% if aviso_velocidad == 'riesgo' %}<p class="texto-error" role="alert">{{ c.icono('alerta') }}<span>No se guardó: para una opción en rojo, marca «Entiendo el riesgo».</span></p>{% endif %}
+  <form method="post" action="/velocidad" class="velocidades">
+    <div class="ritmo-columnas">
+      <fieldset class="ritmo-grupo">
+        <legend><span class="ritmo-num">1</span>Cada cuánto escribe</legend>
+        <p class="ayuda">Tiempo entre un mensaje y el siguiente.</p>
+        {% for n, v in velocidades.items() %}
+        <label class="velocidad{% if n >= riesgo_desde %} velocidad-riesgo{% elif n == recomendada %} velocidad-recomendada{% endif %}">
+          <input type="radio" name="nivel" value="{{ n }}" {% if n == nivel %}checked{% endif %}>
+          <span class="velocidad-cada">Cada {{ v.cada }}</span>
+          <span class="velocidad-nota">{{ v.nota }}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+      <fieldset class="ritmo-grupo">
+        <legend><span class="ritmo-num">2</span>Máximo de mensajes al día</legend>
+        <p class="ayuda">A quien no sigue tu cuenta. Quien no entra hoy espera a mañana, en su sitio.</p>
+        {% for t in topes_dm %}
+        <label class="velocidad{% if t > tope_recomendado %} velocidad-riesgo{% elif t == tope_recomendado %} velocidad-recomendada{% endif %}">
+          <input type="radio" name="tope_dm_dia" value="{{ t }}" {% if t == tope_dm_dia %}checked{% endif %}>
+          <span class="velocidad-cada">{{ t }} al día</span>
+          {% if t == tope_recomendado %}<span class="velocidad-nota">Recomendado</span>{% elif t > tope_recomendado %}<span class="velocidad-nota">Riesgo alto</span>{% endif %}
+        </label>
+        {% endfor %}
+      </fieldset>
+      <fieldset class="ritmo-grupo">
+        <legend><span class="ritmo-num">3</span>Extra para tus seguidores</legend>
+        <p class="ayuda">A quien sigue tu cuenta le llega a la bandeja normal y TikTok lo vigila menos. Tienen su propio cupo.</p>
+        {% for t in topes_seguidores %}
+        <label class="velocidad{% if t > seguidores_recomendado %} velocidad-riesgo{% elif t == seguidores_recomendado %} velocidad-recomendada{% endif %}">
+          <input type="radio" name="tope_seguidores" value="{{ t }}" {% if t == tope_seguidores %}checked{% endif %}>
+          <span class="velocidad-cada">{{ 'Apagado' if t == 0 else '+' ~ t ~ ' al día' }}</span>
+          {% if t == seguidores_recomendado %}<span class="velocidad-nota">Recomendado</span>{% elif t > seguidores_recomendado %}<span class="velocidad-nota">Riesgo alto</span>{% endif %}
+        </label>
+        {% endfor %}
+      </fieldset>
+    </div>
+    <div class="nota-riesgo" role="note">
+      {{ c.icono('alerta') }}
+      <div>
+        <p><strong>Las opciones en rojo pueden hacer que TikTok frene o bloquee la cuenta</strong> (normalmente 24–48 h sin poder enviar mensajes). TikTok no publica su límite: cuantos más mensajes y más seguidos, más riesgo. Lo que más vigila es el total de mensajes al día a gente que no te sigue.</p>
+        <label class="interruptor"><input type="checkbox" name="acepto_riesgo" value="1"><span>Entiendo el riesgo y quiero estas opciones</span></label>
+      </div>
+    </div>
+    <div class="ritmo-pie">
+      <p class="tenue pequena">{{ c.icono('info') }}<span>Recomendado: <strong>cada {{ velocidades[recomendada].cada }}</strong>, <strong>{{ tope_recomendado }} al día</strong> y <strong>+{{ seguidores_recomendado }}</strong> para seguidores, con 3 o más versiones del mensaje en Textos. Si TikTok avisa, el bot va más despacio solo.</span></p>
+      <button data-ocupado="Guardando…">{{ c.icono('check') }}<span>Guardar</span></button>
+    </div>
+  </form>
+</section>
+{% endblock %}

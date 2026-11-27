@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% import "_comun.html" as c with context %}
+{% block titulo %}Ajustes{% endblock %}
+{% block contenido %}
+{%- set MODOS = [
+  ('todos', 'A todos', 'Mensaje privado y además respuesta en público a cada persona («Revisa tus msj bro 🔥»), como dice tu instructivo.', True),
+  ('solo_cerrados', 'Solo a quien tiene los mensajes cerrados', 'Mensaje privado a todos. Respuesta en público solo si no se le puede escribir. Menos acciones: más personas al día.', False),
+  ('solo_publicas', 'Solo respuestas públicas (plan B)', 'No manda mensajes privados: responde a todos en el comentario.', False),
+] -%}
+<div class="estrecho-ajustes">
+<div class="encabezado">
+  <div>
+    <h1>Ajustes</h1>
+    <p>Cómo responde el bot y a quién. Los cambios se aplican en la siguiente vuelta del bot.</p>
+  </div>
+</div>
+
+{% if error %}
+<div class="aviso aviso-rojo" role="alert">{{ c.icono('alerta') }}<div><h2>No se ha guardado</h2><p>{{ error[:1] | upper }}{{ error[1:] }}</p></div></div>
+{% endif %}
+{% if guardado %}
+<div class="aviso aviso-verde" role="status">{{ c.icono('check') }}<div><h2>Guardado</h2><p>El bot lo usará en su siguiente vuelta.</p>{% if repuestos is defined and repuestos is not none %}<p><strong>Modo de prueba quitado: desde ahora el bot envía de verdad.</strong> {% if repuestos %}{{ repuestos }} {{ 'persona atendida' if repuestos == 1 else 'personas atendidas' }} en modo de prueba {{ 'vuelve' if repuestos == 1 else 'vuelven' }} a la cola para recibir su mensaje de verdad.{% endif %}</p>{% endif %}</div></div>
+{% endif %}
+
+<section class="tarjeta cuenta-tarjeta" id="cuenta" aria-labelledby="t-cuenta" style="margin-bottom: 20px">
+  <h2 id="t-cuenta">Tu cuenta de TikTok</h2>
+  {% if cuenta_listo and cta.estado != 'conectando' %}
+  <p class="aviso aviso-verde" role="status">{{ c.icono('check') }}<span><strong>Sesión guardada.</strong> El bot está arrancando y comprobando la cuenta. En un minuto verás aquí «Conectada».</span></p>
+  {% endif %}
+
+  {% if cta.estado == 'conectando' %}
+  <p><span class="etiqueta tono-azul">Se abrió una ventana de TikTok</span></p>
+  <ol class="pasos">
+    <li>Busca la ventana de Chrome que se acaba de abrir{% if es_mac %} (icono «Google Chrome for Testing» en el Dock){% endif %}.</li>
+    <li>Elige <strong>«Usar código QR»</strong> y escanéalo con la app de TikTok del celular: <strong>Perfil → ☰ → icono de escanear</strong>.
+      <span class="ayuda">Comprueba antes que en la app está abierta la cuenta que quieres conectar.</span></li>
+    <li>Cuando veas tu cuenta dentro, vuelve aquí y pulsa <strong>«Ya entré»</strong>.</li>
+  </ol>
+  <form method="post" action="/cuenta/listo"><input type="hidden" name="volver" value="ajustes">
+    <button data-ocupado="Guardando…">{{ c.icono('check') }}<span>Ya entré</span></button></form>
+
+  {% elif cta.estado == 'conectada' %}
+  <p><span class="etiqueta tono-verde">Conectada</span> <strong>@{{ cta.cuenta }}</strong></p>
+  <p class="tenue">El bot contesta con esta cuenta. Para usar otra, pulsa «Cambiar de cuenta»: se cierra esta sesión y se abre una ventana para entrar con la nueva.</p>
+  <div class="acciones">
+    <form method="post" action="/cuenta/cambiar" data-confirmar="¿Cambiar de cuenta? Se cierra la sesión de @{{ cta.cuenta }} y se abre una ventana para entrar con otra. El bot no trabaja hasta que entres."><input type="hidden" name="volver" value="ajustes">
+      <button class="secundario" data-ocupado="Abriendo…">{{ c.icono('externo') }}<span>Cambiar de cuenta</span></button></form>
+    <form method="post" action="/cuenta/desconectar" data-confirmar="¿Cerrar la sesión de @{{ cta.cuenta }}? El bot dejará de trabajar hasta que conectes una cuenta."><input type="hidden" name="volver" value="ajustes">
+      <button class="secundario" data-ocupado="Cerrando…">{{ c.icono('apagar') }}<span>Cerrar sesión</span></button></form>
+  </div>
+
+  {% else %}
+  {% if cta.estado == 'cerrada' %}
+  <p><span class="etiqueta tono-rojo">Sesión cerrada</span> <strong>@{{ cta.cuenta }}</strong></p>
+  <p class="tenue">TikTok cerró la sesión del bot. Vuelve a entrar una vez y el bot sigue solo, o entra con otra cuenta.</p>
+  {% else %}
+  <p><span class="etiqueta tono-ambar">Sin conectar</span></p>
+  <p class="tenue">El bot no tiene ninguna cuenta de TikTok y no hace nada hasta que la conectes.</p>
+  {% if cta.no_vimos_sesion %}
+  <p class="aviso aviso-ambar">{{ c.icono('alerta') }}<span><strong>No vimos tu cuenta dentro de TikTok.</strong> Puede que pulsaras «Ya entré» antes de terminar. Pulsa el botón otra vez y espera a ver tu perfil de TikTok en esa ventana.</span></p>
+  {% endif %}
+  {% endif %}
+  <div class="acciones">
+    <form method="post" action="/cuenta/conectar"><input type="hidden" name="volver" value="ajustes">
+      <button data-ocupado="Abriendo TikTok…">{{ c.icono('externo') }}<span>{{ 'Volver a iniciar sesión' if cta.estado == 'cerrada' else 'Conectar mi cuenta de TikTok' }}</span></button></form>
+    {% if cta.estado == 'cerrada' %}
+    <form method="post" action="/cuenta/cambiar" data-confirmar="¿Entrar con otra cuenta? Se olvida la sesión de @{{ cta.cuenta }}."><input type="hidden" name="volver" value="ajustes">
+      <button class="secundario" data-ocupado="Abriendo…">{{ c.icono('externo') }}<span>Entrar con otra cuenta</span></button></form>
+    {% endif %}
+  </div>
+  {% endif %}
+  <p class="ayuda">Se entra con el código QR desde la app del celular. Si TikTok dice «Maximum number of attempts reached», espera unas horas antes de volver a intentarlo.</p>
+</section>
+{% if cta.estado == 'conectando' %}<script>setTimeout(() => location.reload(), 5000);</script>
+{% elif cuenta_listo %}<script>setTimeout(() => location.replace('/ajustes#cuenta'), 15000);</script>{% endif %}
+
+<form method="post" action="/ajustes" class="ajustes" data-vigilar>
+  <section class="tarjeta" aria-labelledby="t-responder">
+    <h2 id="t-responder">Cómo responde</h2>
+    <fieldset class="campo">
+      <legend>Respuesta pública</legend>
+      <div class="opciones-tarjeta">
+        {% for valor, titulo, texto, recomendado in MODOS %}
+        <label class="opcion">
+          <input type="radio" name="modo_publica" value="{{ valor }}" {% if cfg.modo_publica == valor %}checked{% endif %}>
+          <span class="opcion-titulo">{{ titulo }}{% if recomendado %} <span class="etiqueta tono-verde sin-punto">Recomendado</span>{% endif %}</span>
+          <span class="opcion-texto">{{ texto }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <div class="campo">
+      <label for="landing">Enlace de tu página (landing)</label>
+      <input id="landing" type="url" name="landing" value="{{ cfg.landing }}" placeholder="https://academia.com/clase-gratis" inputmode="url">
+      <p class="ayuda">La página de la academia a la que el bot manda a cada persona (por ejemplo, la de la clase gratis). Va dentro del mensaje privado, en el lugar de <code>{landing}</code>.</p>
+    </div>
+  </section>
+
+  <section class="tarjeta" aria-labelledby="t-quien">
+    <h2 id="t-quien">A quién atiende</h2>
+    <div class="campo">
+      <label for="caducidad">No atender comentarios con más de… (días)</label>
+      <input id="caducidad" class="corto" type="number" min="0" max="3650" name="caducidad_dias" value="{{ cfg.caducidad_dias }}" inputmode="numeric">
+      <p class="ayuda">0 = sin límite: se atiende a todos, aunque el comentario sea antiguo.</p>
+    </div>
+    <div class="campo">
+      <label class="interruptor"><input type="checkbox" name="atender_historico" value="1" {% if cfg.atender_historico %}checked{% endif %}>
+        <span>Atender comentarios de antes de la instalación<span class="ayuda">Solo cuando no haya comentarios nuevos esperando.</span></span></label>
+    </div>
+    <div class="campo">
+      <label for="ofensivas">Palabras ofensivas</label>
+      <textarea id="ofensivas" name="palabras_ofensivas" rows="5">{{ cfg.palabras_ofensivas | join('\n') }}</textarea>
+      <p class="ayuda">Una por línea. A quien las use se le manda el mensaje privado, pero nunca se le responde en público.</p>
+    </div>
+    <div class="campo">
+      <label for="equipo">Cuentas del equipo</label>
+      <textarea id="equipo" name="cuentas_equipo" rows="3" placeholder="usuario_del_equipo">{{ cfg.cuentas_equipo | join('\n') }}</textarea>
+      <p class="ayuda">Una por línea, sin @. Sus comentarios se saltan.</p>
+    </div>
+  </section>
+
+  <section class="tarjeta" id="orden" aria-labelledby="t-orden">
+    <h2 id="t-orden">Orden y comentarios repetidos</h2>
+    <fieldset class="campo">
+      <legend>A quién atiende primero</legend>
+      <div class="opciones-tarjeta">
+        <label class="opcion">
+          <input type="radio" name="orden_cola" value="videos_recientes" {% if cfg.orden_cola == 'videos_recientes' %}checked{% endif %}>
+          <span class="opcion-titulo">Video más reciente primero <span class="etiqueta tono-verde sin-punto">Como en tu instructivo</span></span>
+          <span class="opcion-texto">Empieza por el video más nuevo y, dentro de cada video, por los comentarios con más «me gusta» (como «Populares»). Después pasa al siguiente video.</span>
+        </label>
+        <label class="opcion">
+          <input type="radio" name="orden_cola" value="llegada" {% if cfg.orden_cola == 'llegada' %}checked{% endif %}>
+          <span class="opcion-titulo">Por orden de llegada</span>
+          <span class="opcion-texto">Quien comentó antes recibe antes su mensaje, sea del video que sea.</span>
+        </label>
+      </div>
+    </fieldset>
+    <div class="campo">
+      <label for="recordatorio">Si alguien ya atendido vuelve a comentar, responderle en público como mucho cada… (días)</label>
+      <input id="recordatorio" class="corto" type="number" min="0" max="365" name="recordatorio_cada_dias" value="{{ cfg.recordatorio_cada_dias }}" inputmode="numeric">
+      <p class="ayuda">Si ya tenía la info: «¿Revisaste tus mensajes? 🔥». Si ya dejó su número: «Ya estamos en contacto bro 🔥». El enlace nunca se le manda dos veces. 0 = no responderle.</p>
+    </div>
+  </section>
+
+  <section class="tarjeta" id="conversacion" aria-labelledby="t-conversacion">
+    <h2 id="t-conversacion">Conversación por mensaje privado</h2>
+    <div class="campo">
+      <label class="interruptor"><input type="checkbox" name="leer_bandeja" value="1" {% if cfg.leer_bandeja %}checked{% endif %}>
+        <span>Leer y contestar los mensajes privados<span class="ayuda">Cada pocos minutos el bot mira tus mensajes. Si alguien deja su número, le contesta «Ya tenemos tu número…» y te lo pasa (ver Leads). Si pregunta o duda, le pide el número. Si se muestra interesado, le anima. Si escribe sin haber recibido la info, le manda el enlace.</span></span></label>
+    </div>
+    <div class="campo">
+      <label for="humano">Palabras que pasan la conversación a tu equipo</label>
+      <textarea id="humano" name="palabras_humano" rows="5">{{ cfg.palabras_humano | join('\n') }}</textarea>
+      <p class="ayuda">Una por línea (sin importar mayúsculas ni tildes). Si la persona escribe una de estas (precios, quejas, dudas del programa…), el bot no le contesta y te avisa por correo para que le conteste alguien del equipo.</p>
+    </div>
+    <div class="campo">
+      <label for="interes">Palabras de interés (respuesta de ánimo)</label>
+      <textarea id="interes" name="palabras_interes" rows="4">{{ cfg.palabras_interes | join('\n') }}</textarea>
+      <p class="ayuda">Una por línea. Si la persona escribe una de estas, el bot le manda la respuesta de ánimo (una sola vez).</p>
+    </div>
+    <div class="campo">
+      <label for="max-auto">Respuestas automáticas por persona antes de pasarla al equipo</label>
+      <input id="max-auto" class="corto" type="number" min="0" max="50" name="max_respuestas_auto" value="{{ cfg.max_respuestas_auto }}" inputmode="numeric">
+      <p class="ayuda">Si sigue escribiendo sin dejar su número, pasa a tu equipo.</p>
+    </div>
+  </section>
+
+  <section class="tarjeta" id="leads" aria-labelledby="t-leads">
+    <h2 id="t-leads">Leads (personas que dejan su número)</h2>
+    <div class="campo">
+      <label for="emails-leads">Correos que reciben cada lead</label>
+      <textarea id="emails-leads" name="emails_leads" rows="3" placeholder="ventas@academia.com">{{ cfg.emails_leads | join('\n') }}</textarea>
+      <p class="ayuda">Uno por línea. Vacío = a los correos de alertas (los de <a href="/correo">Correo</a>). Llega un correo por cada número, al momento.</p>
+    </div>
+    <div class="campo">
+      <label for="webhook">Enlace para mandar cada lead a tu sistema de ventas (webhook de GoHighLevel u otro) — opcional</label>
+      <input id="webhook" type="url" name="webhook_leads" value="{{ cfg.webhook_leads }}" placeholder="https://services.leadconnectorhq.com/hooks/…" inputmode="url">
+      <p class="ayuda">En GoHighLevel: Automatización → crea un flujo con el disparador «Inbound Webhook» y copia aquí su enlace. El bot le manda usuario de TikTok, nombre, número, video, palabra clave y fecha.</p>
+    </div>
+    <div class="campo">
+      <label for="seguimiento">Escribir el «¿cómo te fue?» a las… horas de marcar «Ya hablé con la persona»</label>
+      <input id="seguimiento" class="corto" type="number" min="0" max="720" name="seguimiento_espera_h" value="{{ cfg.seguimiento_espera_h }}" inputmode="numeric">
+    </div>
+  </section>
+
+  <section class="tarjeta" id="bienvenida" aria-labelledby="t-bienvenida">
+    <h2 id="t-bienvenida">Bienvenida a seguidores nuevos</h2>
+    <div class="campo">
+      <label class="interruptor"><input type="checkbox" name="bienvenida_seguidores" value="1" {% if cfg.bienvenida_seguidores %}checked{% endif %}>
+        <span>Mandar el mensaje de bienvenida a cada seguidor nuevo<span class="ayuda">Solo a quien empiece a seguirte desde que el bot está encendido, y nunca a quien ya recibió la info por un comentario. Usa el cupo de mensajes de seguidores.</span></span></label>
+    </div>
+    <div class="campo">
+      <label for="youtube">Enlace del video de YouTube</label>
+      <input id="youtube" type="url" name="enlace_youtube" value="{{ cfg.enlace_youtube }}" placeholder="https://youtu.be/…" inputmode="url">
+      <p class="ayuda">Va dentro del mensaje de bienvenida, en el lugar de <code>{youtube}</code>. Sin enlace no se manda la bienvenida.</p>
+    </div>
+  </section>
+
+  <section class="tarjeta" aria-labelledby="t-descanso">
+    <h2 id="t-descanso">Descanso diario</h2>
+    <fieldset class="campo">
+      <legend>El bot descansa {{ cfg.descanso_diario_horas }} h al día. Empieza a una hora al azar entre:</legend>
+      <div class="horas">
+        <label><span class="solo-lector">Desde</span><input type="time" name="descanso_desde" value="{{ cfg.descanso_diario_inicio[0] }}"></label>
+        <span aria-hidden="true">y</span>
+        <label><span class="solo-lector">Hasta</span><input type="time" name="descanso_hasta" value="{{ cfg.descanso_diario_inicio[1] }}"></label>
+        <span class="tenue">hora de Utah</span>
+      </div>
+    </fieldset>
+  </section>
+
+  <section class="tarjeta" id="modo-prueba" aria-labelledby="t-seguridad">
+    <h2 id="t-seguridad">Pruebas y seguridad</h2>
+    <div class="campo">
+      <label class="interruptor interruptor-ambar"><input type="checkbox" name="modo_prueba" value="1" {% if cfg.modo_prueba %}checked{% endif %}>
+        <span>Modo de prueba<span class="ayuda">El bot hace todo menos pulsar «enviar» y «publicar». Sirve para comprobar que funciona sin escribir a nadie. Al quitarlo, quien fue atendido en la prueba vuelve a la cola y recibe su mensaje de verdad.</span></span></label>
+    </div>
+  </section>
+
+  <p class="nota-correo tenue">{{ c.icono('correo') }}<span>Los correos de alertas y del resumen diario se configuran en <a href="/correo">Correo</a>.</span></p>
+
+  <div class="barra-guardar">
+    <span class="estado-cambios" aria-live="polite"><span class="sin-cambios">Sin cambios pendientes</span><span class="hay-cambios">Tienes cambios sin guardar</span></span>
+    <button data-ocupado="Guardando…">{{ c.icono('check') }}<span>Guardar ajustes</span></button>
+  </div>
+</form>
+
+<section class="tarjeta salir-tarjeta" aria-labelledby="t-salir">
+  <h2 id="t-salir">Salir del panel</h2>
+  <p class="ayuda">Cierra el panel en este navegador y en cualquier otro donde esté abierto. Para volver a entrar hace falta la contraseña. El bot sigue funcionando igual.</p>
+  <form method="post" action="/salir">
+    <button class="boton boton-secundario">{{ c.icono('candado') }}<span>Salir</span></button>
+  </form>
+</section>
+</div>
+{% endblock %}
